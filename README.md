@@ -130,28 +130,16 @@ and QR scanning. When the scanner is opened over plain `http://` it shows an
 
 ## Running on AWS (cloud)
 
-One small Ubuntu server runs the app behind [Caddy](https://caddyserver.com), which gets a free
-Let's Encrypt HTTPS certificate automatically. The address is `https://<ip-with-dashes>.sslip.io`
-(for example `https://13-233-45-67.sslip.io`), so no domain needs to be bought.
+The shop runs on one small AWS EC2 server behind [Caddy](https://caddyserver.com), with a free
+Let's Encrypt certificate, at a free [DuckDNS](https://www.duckdns.org) name. The full guide
+(creating the server, the name, updates, backups, password reset, costs and troubleshooting) is in
+[DEPLOY.md](DEPLOY.md). In short, from this folder:
 
-1. In the AWS console (region **Asia Pacific (Mumbai)**), launch an EC2 instance: **Ubuntu Server
-   24.04 LTS**, type **t3.micro** (free tier), a new key pair (**.pem**), 20–30 GB storage. In the
-   network settings allow **SSH from My IP**, **HTTPS from anywhere** and **HTTP from anywhere**.
-2. Allocate an **Elastic IP** and associate it with the instance, so the address never changes.
-3. From this folder: `./deploy/deploy.sh <elastic-ip> <path/to/key.pem>`. It builds the app,
-   installs everything on the server and prints the web address and the first owner password
-   (you must set your own password at the first sign-in).
-4. To update after changes, run the same command again. Data is kept.
-
-On the server the data lives in `/var/lib/krishna-gold-shop` (database, photos, backups) and
-the settings in `/etc/krishna-gold-shop.env`. Logs: `sudo journalctl -u krishna-gold-shop -f`.
-Copy the backups and photos to this computer regularly with
-`./deploy/download-backup.sh <elastic-ip> <path/to/key.pem>`.
-
-Forgot the password on the server:
-`ssh -i key.pem ubuntu@<ip>` then
-`cd /opt/krishna-gold-shop && sudo bash -c 'set -a; . /etc/krishna-gold-shop.env; RESET_PASSWORD="New-Pass-123" sudo -E -u kgs node_modules/.bin/tsx scripts/reset-password.ts'`
-(use your own new password instead of `New-Pass-123`).
+```bash
+./deploy/deploy.sh <elastic-ip> ~/.ssh/krishna-gold-shop.pem [domain]   # install or update
+./deploy/download-backup.sh <elastic-ip> ~/.ssh/krishna-gold-shop.pem   # copy backups + photos here
+./deploy/reset-password.sh <elastic-ip> ~/.ssh/krishna-gold-shop.pem    # forgotten password
+```
 
 ## Data and backups
 
