@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Builds the app here and installs it on the cloud server over SSH. Run again to update.
-# Usage: ./deploy/deploy.sh <server-public-ip> <path/to/key.pem>
+# Usage: ./deploy/deploy.sh <server-public-ip> <path/to/key.pem> [domain]
+# Without a domain the one used last time is kept, or https://<ip-with-dashes>.sslip.io the first time.
 set -euo pipefail
 
-IP="${1:?usage: ./deploy/deploy.sh <server-public-ip> <path/to/key.pem>}"
-KEY="${2:?usage: ./deploy/deploy.sh <server-public-ip> <path/to/key.pem>}"
-DOMAIN="${DOMAIN:-${IP//./-}.sslip.io}"
+USAGE="usage: ./deploy/deploy.sh <server-public-ip> <path/to/key.pem> [domain]"
+IP="${1:?$USAGE}"
+KEY="${2:?$USAGE}"
+DOMAIN="${3:-}"
+IP_DOMAIN="${IP//./-}.sslip.io"
 REMOTE="ubuntu@$IP"
 
 # SSH refuses keys that others can read; files under /mnt/c (Windows) cannot be made private.
@@ -18,6 +21,11 @@ SSH_OPTS=(-i "$KEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15)
 
 cd "$(dirname "$0")/.."
 
+if [ -z "$DOMAIN" ]; then
+  DOMAIN="$(ssh "${SSH_OPTS[@]}" "$REMOTE" 'cat /etc/krishna-gold-shop.domain 2>/dev/null' || true)"
+  DOMAIN="${DOMAIN:-$IP_DOMAIN}"
+fi
+
 echo "==> Building"
 npm run build
 
@@ -28,7 +36,7 @@ rsync -az --delete -e "ssh ${SSH_OPTS[*]}" \
   ./ "$REMOTE:/tmp/kgs-release/"
 
 echo "==> Setting up the server (first time takes a few minutes)"
-ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo bash /tmp/kgs-release/deploy/server-setup.sh '$DOMAIN' && sudo bash /tmp/kgs-release/deploy/server-install.sh"
+ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo bash /tmp/kgs-release/deploy/server-setup.sh '$DOMAIN' '$IP_DOMAIN' && sudo bash /tmp/kgs-release/deploy/server-install.sh"
 
 echo
 echo "Open: https://$DOMAIN"

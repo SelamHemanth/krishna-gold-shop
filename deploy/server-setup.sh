@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# One-time setup of an Ubuntu 24.04 cloud server (safe to run again).
+# One-time setup of an Ubuntu 24.04 or newer cloud server (safe to run again).
 # Installs Node.js 22, Caddy (automatic HTTPS), a swap file, a service user and the systemd service.
-# Usage (as root): server-setup.sh <domain>
+# Usage (as root): server-setup.sh <domain> [<old-domain-to-redirect>]
 set -euo pipefail
 
-DOMAIN="${1:?usage: server-setup.sh <domain>}"
+DOMAIN="${1:?usage: server-setup.sh <domain> [<old-domain-to-redirect>]}"
+REDIRECT_FROM="${2:-}"
 APP=/opt/krishna-gold-shop
 VAR=/var/lib/krishna-gold-shop
 ENV_FILE=/etc/krishna-gold-shop.env
@@ -95,7 +96,16 @@ $DOMAIN {
 	reverse_proxy 127.0.0.1:8787
 }
 EOF
+if [ -n "$REDIRECT_FROM" ] && [ "$REDIRECT_FROM" != "$DOMAIN" ]; then
+  cat >>/etc/caddy/Caddyfile <<EOF
 
+$REDIRECT_FROM {
+	redir https://$DOMAIN{uri} permanent
+}
+EOF
+fi
+echo "$DOMAIN" >/etc/krishna-gold-shop.domain
+caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 systemctl daemon-reload
 systemctl enable krishna-gold-shop >/dev/null
 systemctl enable caddy >/dev/null
