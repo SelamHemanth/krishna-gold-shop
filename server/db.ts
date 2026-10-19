@@ -187,7 +187,12 @@ function seed() {
   if (!existing) {
     db.prepare(
       "INSERT INTO users (username, password_hash, created_at, must_change_password) VALUES (?, ?, ?, ?)",
-    ).run(username, bcrypt.hashSync(password, 12), new Date().toISOString(), password === DEFAULT_PASSWORD ? 1 : 0);
+    ).run(
+      username,
+      bcrypt.hashSync(password, 12),
+      new Date().toISOString(),
+      password === DEFAULT_PASSWORD || process.env.SHOP_PASSWORD_TEMPORARY === "true" ? 1 : 0,
+    );
   }
 }
 

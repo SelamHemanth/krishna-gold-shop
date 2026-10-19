@@ -35,6 +35,8 @@ type AuthedRequest = express.Request & { user: AuthUser };
 
 const app = express();
 app.disable("x-powered-by");
+// Behind a reverse proxy on the same machine (cloud), so req.ip is the visitor, not the proxy.
+if (process.env.TRUST_PROXY === "true") app.set("trust proxy", "loopback");
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
@@ -1134,8 +1136,9 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
   res.status(500).json({ error: "Server error. Check the terminal log." });
 });
 
-app.listen(PORT, () => {
-  console.log(`Krishna Gold Shop API http://127.0.0.1:${PORT}`);
+const HOST = process.env.HOST || "0.0.0.0";
+app.listen(PORT, HOST, () => {
+  console.log(`Krishna Gold Shop API http://${HOST === "0.0.0.0" ? "127.0.0.1" : HOST}:${PORT}`);
   if (!process.env.JWT_SECRET) console.log("Using the session secret stored in data/shop.db.");
   backupNow("startup").catch((err) => console.error("Startup backup failed:", err));
 });
